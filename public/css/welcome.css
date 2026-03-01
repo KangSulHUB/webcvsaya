@@ -230,6 +230,43 @@ ul li {
     margin-top: 8px;
 }
 
+.project-public-note {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #4a657d;
+    line-height: 1.6;
+}
+
+.checkbox-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #294860;
+}
+
+.project-status {
+    margin: 4px 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.project-status.is-published {
+    color: #1e7e34;
+}
+
+.project-status.is-private {
+    color: #a15c00;
+}
+
+.admin-login-card {
+    max-width: 420px;
+    border: 1px solid #dce6ef;
+    border-radius: 10px;
+    padding: 18px;
+    background-color: #f8fbff;
+}
+
 .btn-danger {
     background-color: #d9534f;
 }

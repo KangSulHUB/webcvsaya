@@ -18,9 +18,17 @@
                 <a href="{{ route('cv') }}" class="menu-item {{ request()->routeIs('cv') ? 'active' : '' }}">Lihat CV</a>
                 <a href="{{ route('project') }}" class="menu-item {{ request()->routeIs('project') ? 'active' : '' }}">Project</a>
                 <a href="{{ route('contact') }}" class="menu-item {{ request()->routeIs('contact') ? 'active' : '' }}">Contact</a>
+                <a href="{{ route('admin.projects') }}" class="menu-item {{ request()->routeIs('admin.*') ? 'active' : '' }}">Admin</a>
             </nav>
 
-            <button class="btn" type="button">Download CV</button>
+            @if(session('is_admin'))
+                <form method="POST" action="{{ route('admin.logout') }}">
+                    @csrf
+                    <button class="btn btn-danger" type="submit">Logout Admin</button>
+                </form>
+            @else
+                <a href="{{ route('admin.login') }}" class="btn" style="display:inline-block;box-sizing:border-box;text-align:center;text-decoration:none;">Login Admin</a>
+            @endif
         </aside>
 
         <main class="main-content">

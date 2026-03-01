@@ -11,5 +11,7 @@ class Project extends Model
         'description',
         'file_path',
         'mime_type',
+        'external_url',
+        'is_published',
     ];
 }

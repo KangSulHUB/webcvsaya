@@ -14,27 +14,31 @@ class ProjectController extends Controller
     {
         try {
             $projects = Project::query()
+                ->where('is_published', true)
                 ->latest()
                 ->get()
-                ->map(function (Project $project) {
-                    $mimeType = $project->mime_type ?? '';
-
-                    return [
-                        'id' => $project->id,
-                        'title' => $project->title,
-                        'description' => $project->description,
-                        'url' => $project->file_path ? Storage::url($project->file_path) : null,
-                        'mime' => $mimeType,
-                        'is_image' => str_starts_with($mimeType, 'image/'),
-                        'is_video' => str_starts_with($mimeType, 'video/'),
-                        'file_ext' => $project->file_path ? strtoupper(pathinfo($project->file_path, PATHINFO_EXTENSION)) : null,
-                        'created_at' => optional($project->created_at)->format('d M Y'),
-                    ];
-                });
+                ->map(fn (Project $project) => $this->toProjectCard($project));
 
             return view('project', compact('projects'));
         } catch (QueryException $e) {
             return view('project', [
+                'projects' => collect(),
+                'db_error' => 'Database belum terhubung. Aktifkan MySQL lalu jalankan migrate.',
+            ]);
+        }
+    }
+
+    public function adminIndex()
+    {
+        try {
+            $projects = Project::query()
+                ->latest()
+                ->get()
+                ->map(fn (Project $project) => $this->toProjectCard($project));
+
+            return view('admin.projects', compact('projects'));
+        } catch (QueryException $e) {
+            return view('admin.projects', [
                 'projects' => collect(),
                 'db_error' => 'Database belum terhubung. Aktifkan MySQL lalu jalankan migrate.',
             ]);
@@ -47,6 +51,8 @@ class ProjectController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
             'project_file' => ['nullable', 'file', 'max:20480'],
+            'external_url' => ['nullable', 'url', 'max:2048'],
+            'is_published' => ['nullable', 'boolean'],
         ]);
 
         $filePath = null;
@@ -64,15 +70,17 @@ class ProjectController extends Controller
                 'description' => $validated['description'] ?? null,
                 'file_path' => $filePath,
                 'mime_type' => $mimeType,
+                'external_url' => $validated['external_url'] ?? null,
+                'is_published' => $request->boolean('is_published'),
             ]);
         } catch (QueryException $e) {
             return redirect()
-                ->route('project')
+                ->route('admin.projects')
                 ->with('error', 'Gagal menyimpan project. Pastikan MySQL aktif dan tabel projects sudah dibuat.');
         }
 
         return redirect()
-            ->route('project')
+            ->route('admin.projects')
             ->with('success', 'Project berhasil ditambahkan.');
     }
 
@@ -82,11 +90,15 @@ class ProjectController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
             'project_file' => ['nullable', 'file', 'max:20480'],
+            'external_url' => ['nullable', 'url', 'max:2048'],
+            'is_published' => ['nullable', 'boolean'],
         ]);
 
         try {
             $project->title = $validated['title'];
             $project->description = $validated['description'] ?? null;
+            $project->external_url = $validated['external_url'] ?? null;
+            $project->is_published = $request->boolean('is_published');
 
             if ($request->hasFile('project_file')) {
                 if ($project->file_path && Storage::disk('public')->exists($project->file_path)) {
@@ -101,12 +113,12 @@ class ProjectController extends Controller
             $project->save();
         } catch (QueryException $e) {
             return redirect()
-                ->route('project')
+                ->route('admin.projects')
                 ->with('error', 'Gagal memperbarui project. Periksa koneksi database Anda.');
         }
 
         return redirect()
-            ->route('project')
+            ->route('admin.projects')
             ->with('success', 'Project berhasil diperbarui.');
     }
 
@@ -120,12 +132,12 @@ class ProjectController extends Controller
             $project->delete();
         } catch (QueryException $e) {
             return redirect()
-                ->route('project')
+                ->route('admin.projects')
                 ->with('error', 'Gagal menghapus project. Periksa koneksi database Anda.');
         }
 
         return redirect()
-            ->route('project')
+            ->route('admin.projects')
             ->with('success', 'Project berhasil dihapus.');
     }
 
@@ -142,5 +154,28 @@ class ProjectController extends Controller
         $fileName = $safeBaseName.'-'.Str::random(8).($extension ? '.'.$extension : '');
 
         return $file->storeAs('projects', $fileName, 'public');
+    }
+
+    private function toProjectCard(Project $project): array
+    {
+        $mimeType = $project->mime_type ?? '';
+        $url = $project->external_url ?: ($project->file_path ? Storage::url($project->file_path) : null);
+        $urlExtension = $url ? strtolower(pathinfo(parse_url($url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION)) : null;
+        $isImage = str_starts_with($mimeType, 'image/') || in_array($urlExtension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'], true);
+        $isVideo = str_starts_with($mimeType, 'video/') || in_array($urlExtension, ['mp4', 'webm', 'mov', 'm4v'], true);
+
+        return [
+            'id' => $project->id,
+            'title' => $project->title,
+            'description' => $project->description,
+            'url' => $url,
+            'mime' => $mimeType,
+            'external_url' => $project->external_url,
+            'is_published' => (bool) $project->is_published,
+            'is_image' => $isImage,
+            'is_video' => $isVideo,
+            'file_ext' => $urlExtension ? strtoupper($urlExtension) : null,
+            'created_at' => optional($project->created_at)->format('d M Y'),
+        ];
     }
 }

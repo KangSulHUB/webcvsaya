@@ -1,9 +1,16 @@
 # webcvsaya
 
-Project CV berbasis Laravel (Blade) dengan fitur:
+Project portfolio berbasis Laravel (Blade) dengan fitur:
 - Halaman CV
 - Halaman Contact
-- CRUD Project + upload file
+- Halaman portfolio publik `/project` (untuk HRD)
+- Dashboard admin `/admin/projects` (CRUD project + upload file + publish/unpublish)
+
+## Route Utama
+
+- Publik HRD: `GET /project`
+- Login admin: `GET /admin/login`
+- Dashboard admin: `GET /admin/projects`
 
 ## Jalankan Lokal (XAMPP)
 
@@ -29,63 +36,98 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-4. Jalankan migrasi:
+4. Set login admin di `.env`:
+```env
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=ganti-password-kamu
+```
+
+5. Jalankan migrasi:
 ```bash
 php artisan migrate
 ```
 
-5. Link storage (untuk file project):
+6. Link storage (untuk file project lokal):
 ```bash
 php artisan storage:link
 ```
 
-6. Build asset:
+7. Build asset:
 ```bash
 npm run build
 ```
 
-7. Jalankan server:
+8. Jalankan server:
 ```bash
 php artisan serve
 ```
 
-## Deploy Laravel Full (cPanel / shared hosting / VPS)
+## Cara Pakai CRUD Portfolio
 
-1. Jalankan script prepare dari lokal (PowerShell):
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\prepare-production.ps1
+1. Buka `/admin/login`, login dengan username/password admin dari `.env`.
+2. Masuk ke `/admin/projects`.
+3. Tambah atau edit project:
+- Isi `judul` dan `deskripsi`
+- Pilih salah satu:
+  - upload file lokal (`project_file`)
+  - isi `external_url` (misal URL Cloudinary)
+- Centang `Tampilkan di publik` agar muncul di `/project`
+4. Share link `/project` ke HRD.
+
+## Deploy Gratis (Hosting + DB + Cloud)
+
+Contoh stack gratis:
+- Hosting Laravel: Koyeb (Web Service)
+- Database gratis: Supabase Postgres
+- Cloud file gratis: Cloudinary (pakai URL file pada field `external_url`)
+
+### A. Siapkan Database Gratis (Supabase)
+
+1. Buat project Supabase.
+2. Ambil kredensial Postgres.
+3. Nanti isi env production:
+```env
+DB_CONNECTION=pgsql
+DB_HOST=...
+DB_PORT=5432
+DB_DATABASE=postgres
+DB_USERNAME=...
+DB_PASSWORD=...
 ```
 
-2. Copy `.env.production.example` menjadi `.env` di server, lalu isi:
-- `APP_KEY` (hasilkan dengan `php artisan key:generate` di server)
-- `APP_URL`
-- kredensial database hosting
+### B. Deploy Laravel ke Koyeb
 
-3. Upload project ke hosting (Laravel full):
-- Simpan source Laravel di luar `public_html`
-- Pindahkan isi folder `public/` ke `public_html`
-- Edit `public_html/index.php` agar mengarah ke folder source Laravel
-
-4. Setup database di server:
+1. Push project ke GitHub.
+2. Di Koyeb buat Web Service dari repo ini.
+3. Build command:
 ```bash
-php artisan migrate --force
-php artisan storage:link
+composer install --no-dev --optimize-autoloader && npm ci && npm run build
 ```
-
-5. Optimasi cache di server:
+4. Run command:
 ```bash
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+php artisan migrate --force && php artisan storage:link && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=$PORT
 ```
+5. Environment variables minimum:
+```env
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://domain-kamu.koyeb.app
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=pakai-password-kuat
+SESSION_DRIVER=file
+FILESYSTEM_DISK=public
+```
+6. Tambahkan variabel DB (Supabase) seperti di langkah A.
 
-6. Pastikan permission:
-- `storage/` writable
-- `bootstrap/cache/` writable
+### C. Simpan File di Cloudinary (opsional, tetap gratis)
+
+1. Upload image/video project ke Cloudinary.
+2. Copy secure URL hasil upload.
+3. Tempel ke field `external_url` di admin project.
+4. Centang `Tampilkan di publik`.
 
 ## Catatan Penting
 
-Project ini adalah Laravel full (PHP + MySQL), bukan static site.
-
-- Cocok: cPanel/shared hosting, VPS, platform dengan PHP runtime.
-- Tidak cocok untuk deploy full fitur backend di Vercel static-only.
+- Kalau migrasi belum dijalankan, halaman project akan menampilkan pesan error database.
+- Untuk keamanan, segera ganti default `ADMIN_USERNAME` dan `ADMIN_PASSWORD`.
+- Jika platform gratis mengubah kuota/kebijakan, update konfigurasi deployment sesuai dokumentasi provider.
